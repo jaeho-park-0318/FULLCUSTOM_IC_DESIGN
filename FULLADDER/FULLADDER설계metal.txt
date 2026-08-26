@@ -1,0 +1,139 @@
+초기 FULL ADDER Layout에서는 두 개의 HALF ADDER와 OR gate 사이의 신호를 연결하기 위해 Metal4까지 사용하였다.
+
+Metal layer를 높게 사용하면 서로 교차하는 신호를 비교적 쉽게 분리할 수 있어 routing 자체는 편리해진다. 특히 복잡한 배선에서 lower metal의 congestion을 피할 수 있다는 장점이 있다.
+
+그러나 FULL ADDER와 같이 비교적 작은 블록의 local signal까지 필요 이상으로 높은 Metal layer를 사용하면 다음과 같은 단점이 발생할 수 있다.
+
+① Via 수 증가
+
+낮은 Metal에 위치한 pin을 Metal4까지 올리려면 여러 단계의 via가 필요하다.
+
+예를 들어,
+
+M1 → Via1 → M2 → Via2 → M3 → Via3 → M4
+
+와 같은 구조가 필요하다.
+
+신호를 다시 낮은 Metal로 내려야 한다면 반대 방향의 via도 추가되므로 전체 via 개수가 더욱 증가한다.
+
+Via 증가는 다음과 같은 문제를 유발할 수 있다.
+
+추가적인 via resistance 발생
+기생 RC 증가 가능성
+DRC 조건 증가
+Layout 복잡도 증가
+Via 관련 reliability 문제 가능성 증가
+3. 상위 Metal routing resource의 불필요한 사용
+
+일반적으로 낮은 Metal은 transistor 및 cell 주변의 local routing에 사용하고, 높은 Metal은 장거리 신호 및 global routing에 활용하는 것이 효율적이다.
+
+대략적으로,
+
+Local connection → Lower Metal
+
+Intermediate routing → Middle Metal
+
+Global / Power / Clock → Upper Metal
+
+과 같은 방향으로 Metal hierarchy를 활용할 수 있다.
+
+따라서 FULL ADDER 내부의 짧은 신호를 연결하기 위해 Metal4까지 사용할 경우, 상위 계층에서 필요한 routing resource를 불필요하게 점유하게 된다.
+
+작은 블록 하나에서는 큰 문제가 아닐 수 있지만, 동일한 cell이 대규모 회로에서 반복 사용된다면 이러한 비효율이 누적되어 routing congestion에 영향을 줄 수 있다.
+
+4. Parasitic 및 Delay 측면
+
+상위 Metal 자체가 항상 성능에 불리한 것은 아니다.
+
+일반적으로 상위 Metal은 더 두껍고 저항이 낮도록 구성되는 경우가 많기 때문에 긴 배선, Clock, VDD/VSS, Global signal​에는 오히려 유리할 수 있다.
+
+하지만 FULL ADDER 내부처럼 짧은 local connection에서는 Metal 저항 감소로 얻는 이점보다 Metal layer를 여러 번 변경하면서 발생하는 via resistance와 추가적인 parasitic이 더 중요해질 수 있다.
+
+또한 Metal layer마다 width, thickness, spacing, substrate와의 거리 등이 다르므로 배선의 capacitance와 coupling 특성 역시 달라진다.
+
+따라서 단순히 높은 Metal을 사용하는 것이 항상 빠르다고 볼 수 없으며, 실제 성능은 전체 interconnect의 RC를 기준으로 판단해야 한다.
+
+5. Reliability 측면
+
+Metal layer를 여러 단계 오르내리면 그만큼 via interface가 증가한다.
+
+Via는 배선의 중요한 reliability 요소 중 하나이며, 특히 큰 전류가 흐르는 배선에서는 current density와 electromigration을 고려해야 한다.
+
+따라서 특별한 이유가 없다면 불필요한 layer transition을 줄이고 가능한 단순한 routing 구조를 만드는 것이 유리하다.
+
+6. DRC 및 LVS Debug 측면
+
+사용하는 Metal과 Via 종류가 증가할수록 확인해야 하는 design rule도 증가한다.
+
+각 layer에는 다음과 같은 조건이 존재할 수 있다.
+
+Minimum Width
+Minimum Spacing
+Minimum Area
+Via Enclosure
+Via Spacing
+Metal Density
+
+따라서 필요 이상의 Metal layer를 사용하면 DRC error가 발생할 가능성이 증가하고 Layout 수정도 복잡해질 수 있다.
+
+또한 LVS debugging 측면에서도 단순한 배선이 유리하다.
+
+여러 Metal layer와 via를 거치는 신호에서 Open 또는 Short가 발생하면 어느 지점에서 connectivity가 끊어졌거나 합쳐졌는지를 추적하기가 어려워진다.
+
+FULL ADDER 설계 과정에서도 HALF ADDER의 carry와 OR 입력 사이의 connectivity를 확인하는 과정이 필요했기 때문에, 배선 구조를 단순화하는 것이 Layout 검증과 debugging에도 도움이 된다는 것을 확인할 수 있었다.
+
+
+7. Metal4 → Metal3 수정
+
+기존 Metal4까지 사용하던 FULL ADDER routing을 재검토하여 Metal3 이하에서 연결이 가능하도록 배선을 수정하였다.
+
+기존 구조:
+
+Lower Metal → Via → ... → Metal4 → ... → Lower Metal
+
+개선 구조:
+
+Lower Metal → Via → ... → Metal3 → ... → Lower Metal
+
+과 같이 최고 사용 Metal layer를 한 단계 낮춤으로써 불필요한 상위 Metal 사용과 layer transition을 줄였다.
+
+이를 통해 다음과 같은 효과를 기대할 수 있다.
+
+불필요한 Via 감소
+Routing 구조 단순화
+상위 Metal routing resource 확보
+Layout 가독성 향상
+DRC/LVS debugging 용이
+불필요한 parasitic 및 via resistance 감소 가능
+향후 상위 계층 routing 시 자유도 증가
+8. 상위 Metal 사용이 필요한 경우
+
+이번 수정의 의미가 "상위 Metal은 사용하면 안 된다"​는 것은 아니다.
+
+상위 Metal은 다음과 같은 경우 적극적으로 사용하는 것이 적절하다.
+
+VDD/VSS Power Routing
+Clock Distribution
+장거리 Global Signal
+대규모 Bus
+Power Grid
+낮은 배선 저항이 필요한 신호
+Lower Metal에서 routing congestion이 심한 경우
+
+즉, Metal layer는 무조건 낮게 사용하는 것이 아니라 신호의 목적과 배선 길이에 맞는 적절한 layer를 선택하는 것이 중요하다.
+
+9. 결론
+
+FULL ADDER Layout을 처음 설계할 때는 routing 편의성을 위해 Metal4까지 사용하였으나, 설계 규모와 신호의 특성을 고려했을 때 내부 local routing에 Metal4까지 사용할 필요성이 크지 않다고 판단하였다.
+
+이에 따라 routing을 재구성하여 Metal3 이하에서 FULL ADDER의 연결을 구현하였다.
+
+이번 설계를 통해 단순히 DRC와 LVS를 통과하는 것뿐만 아니라, 필요 이상의 Metal layer와 Via 사용을 줄이는 것도 Layout 최적화의 중요한 요소임을 확인하였다.
+
+특히 작은 cell 내부에서는 가능한 한 단순한 local routing을 구성하고, 상위 Metal은 장거리 신호, Power, Clock 및 상위 계층 routing을 위해 확보하는 것이 전체적인 routing efficiency 측면에서 유리하다.
+
+핵심 정리
+
+"높은 Metal을 사용하지 않는 것이 목적이 아니라, 필요한 수준까지만 Metal을 사용하여 불필요한 Via와 routing complexity를 줄이는 것이 목적이다."
+
+따라서 이번 FULL ADDER에서는 Metal4까지 사용했던 초기 Layout을 Metal3까지로 재설계함으로써 보다 단순하고 효율적인 배선 구조를 구현하였다.
