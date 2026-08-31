@@ -1,42 +1,47 @@
-# NAND 기반 SR Latch 설계 보고서
+# NOR 기반 SR Latch 설계 보고서
 
 ## 1. 설계 개요
 
 ### 1.1 설계명
 
-**NAND-Based SR Latch**
+**NOR-Based SR Latch**
 
 ### 1.2 설계 목적
 
-SR Latch는 1-bit의 정보를 저장할 수 있는 가장 기본적인 순차 논리 회로이다.
+NOR 기반 SR Latch는 두 개의 NOR Gate를 Cross-Coupled 형태로 연결하여 1-bit 정보를 저장하는 기본적인 순차 논리 회로이다.
 
-NAND 기반 SR Latch는 두 개의 NAND Gate를 서로 Cross-Coupled 형태로 연결하여 구성하며, 출력 `Q`와 `QB`가 서로의 입력으로 Feedback되는 구조를 이용해 이전 상태를 저장한다.
+NAND 기반 SR Latch와 달리 NOR 기반 SR Latch에서는 Set과 Reset 입력이 **Active-High** 방식으로 동작한다.
+
+즉 입력이 1이 되었을 때 Set 또는 Reset 동작이 수행된다.
 
 본 설계의 목표는 다음과 같다.
 
-- SR Latch의 기본 저장 원리 이해
-- NAND Gate 기반 Cross-Coupled 구조 이해
-- Active-Low Set / Reset 입력 동작 이해
-- Set / Reset / Hold / Invalid 상태 분석
-- Cadence Virtuoso 기반 Transient Simulation
-- Full-Custom Schematic 및 Layout 설계
+- NOR Gate 기반 SR Latch의 동작 원리 이해
+- Cross-Coupled Feedback 구조 이해
+- Active-High Set / Reset 동작 이해
+- Hold / Set / Reset / Invalid 상태 분석
+- NAND SR Latch와의 차이 비교
+- Cadence Virtuoso Transient Simulation
+- Full-Custom Schematic / Layout 설계
 - DRC / LVS / PEX 검증
 
 ---
 
-# 2. SR Latch 기본 개념
+# 2. 기본 입출력
 
-SR은 다음을 의미한다.
+NOR 기반 SR Latch는 다음 입력을 가진다.
 
 ```text
 S = Set
+
 R = Reset
 ```
 
-SR Latch는 기본적으로 다음 출력을 가진다.
+출력:
 
 ```text
 Q
+
 QB
 ```
 
@@ -46,52 +51,44 @@ QB
 QB = NOT(Q)
 ```
 
-관계를 만족한다.
+관계를 만족해야 한다.
+
+---
+
+# 3. Active-High 입력
+
+NOR SR Latch의 가장 중요한 특징은 입력이 **Active-High**라는 것이다.
 
 즉:
 
 ```text
-Q = 1 → QB = 0
+S = 1 → Set
 
-Q = 0 → QB = 1
+R = 1 → Reset
 ```
 
 이다.
 
----
-
-# 3. NAND SR Latch의 입력
-
-NAND 기반 SR Latch는 입력이 **Active-Low**이다.
-
-따라서 일반적으로 입력을 다음과 같이 표시한다.
+반면 입력이 모두 0이면:
 
 ```text
-S_B
-R_B
+S = 0
+R = 0
 ```
 
-여기서 `_B`는 Active-Low 또는 Inverted Signal임을 의미한다.
-
-```text
-S_B = 0 → Set
-
-R_B = 0 → Reset
-```
-
-이다.
+기존 상태를 유지한다.
 
 ---
 
-# 4. NAND SR Latch 구조
+# 4. NOR SR Latch 구조
 
-두 개의 NAND Gate를 Cross-Coupled 형태로 연결한다.
+두 개의 NOR Gate를 Cross-Coupled 방식으로 연결한다.
 
 ```text
                    ┌───────────┐
-S_B ──────────────>│           │
-                   │   NAND    ├────────────> Q
-             QB ──>│           │
+S ────────────────>│           │
+                   │    NOR    ├────────────> QB
+              Q ──>│           │
                    └───────────┘
                         ▲
                         │
@@ -99,44 +96,38 @@ S_B ──────────────>│           │
                         │ Feedback
                         ▼
                    ┌───────────┐
-R_B ──────────────>│           │
-                   │   NAND    ├────────────> QB
-              Q ──>│           │
+R ────────────────>│           │
+                   │    NOR    ├────────────> Q
+             QB ──>│           │
                    └───────────┘
 ```
 
-출력 Q가 아래 NAND의 입력으로 Feedback되고, 출력 QB가 위 NAND의 입력으로 Feedback된다.
+주의할 점은 NOR SR Latch에서 Set 입력 `S=1`일 때 최종적으로 `Q=1`이 되도록 **Q/QB 출력 이름을 올바르게 지정해야 한다는 것**이다.
 
 ---
 
 # 5. 논리식
 
-위쪽 NAND Gate:
+NOR 기반 SR Latch는 다음 관계로 표현할 수 있다.
 
 ```text
-Q = NOT(S_B AND QB)
+QB = NOT(S OR Q)
+
+Q  = NOT(R OR QB)
 ```
 
-아래쪽 NAND Gate:
-
-```text
-QB = NOT(R_B AND Q)
-```
-
-두 식이 서로 Feedback 관계를 형성하기 때문에 이전 출력 상태를 저장할 수 있다.
+두 출력이 서로 Feedback 입력으로 연결되어 상태를 유지한다.
 
 ---
 
 # 6. Truth Table
 
-NAND SR Latch는 Active-Low 입력을 사용한다.
-
-| S_B | R_B | Q(next) | QB(next) | 동작 |
+| S | R | Q(next) | QB(next) | 동작 |
 |---:|---:|---:|---:|---|
-| 1 | 1 | Q(previous) | QB(previous) | Hold |
-| 0 | 1 | 1 | 0 | Set |
-| 1 | 0 | 0 | 1 | Reset |
-| 0 | 0 | 1 | 1 | Invalid |
+| 0 | 0 | Q(previous) | QB(previous) | Hold |
+| 1 | 0 | 1 | 0 | Set |
+| 0 | 1 | 0 | 1 | Reset |
+| 1 | 1 | 0 | 0 | Invalid |
 
 ---
 
@@ -145,15 +136,15 @@ NAND SR Latch는 Active-Low 입력을 사용한다.
 입력:
 
 ```text
-S_B = 1
-R_B = 1
+S = 0
+R = 0
 ```
 
-이라고 하자.
+인 경우이다.
 
-이 경우 NAND Gate의 외부 입력이 모두 비활성화된 상태가 된다.
+NOR Gate의 외부 입력이 모두 비활성화되어 있으며 출력은 Feedback에 의해 이전 상태를 유지한다.
 
-출력은 이전 상태에 의해 결정된다.
+따라서:
 
 ```text
 Q(next)  = Q(previous)
@@ -161,9 +152,7 @@ Q(next)  = Q(previous)
 QB(next) = QB(previous)
 ```
 
-따라서 현재 값을 저장한다.
-
-이를 **Hold State**라고 한다.
+이다.
 
 ---
 
@@ -172,40 +161,38 @@ QB(next) = QB(previous)
 입력:
 
 ```text
-S_B = 0
-R_B = 1
+S = 1
+R = 0
 ```
 
-위쪽 NAND Gate에서:
+으로 설정한다.
+
+S 입력이 1이 되면 Set 측 NOR 출력은:
 
 ```text
-Q = NOT(0 AND QB)
+QB = 0
+```
+
+이 된다.
+
+QB가 0이고 R도 0이므로 다른 NOR Gate 출력은:
+
+```text
+Q = NOT(0 OR 0)
 
 Q = 1
 ```
 
 이 된다.
 
-Q가 1이 되면 아래쪽 NAND Gate는:
-
-```text
-QB = NOT(1 AND 1)
-
-QB = 0
-```
-
-이 된다.
-
-따라서 최종 출력:
+따라서:
 
 ```text
 Q  = 1
 QB = 0
 ```
 
-이다.
-
-즉 **Set 상태**이다.
+으로 Set된다.
 
 ---
 
@@ -214,29 +201,29 @@ QB = 0
 입력:
 
 ```text
-S_B = 1
-R_B = 0
+S = 0
+R = 1
 ```
 
-아래쪽 NAND Gate에서:
+로 설정한다.
+
+R이 1이므로 Q를 발생시키는 NOR Gate 출력은:
 
 ```text
-QB = NOT(0 AND Q)
-
-QB = 1
-```
-
-이 된다.
-
-QB가 1이 되면 위쪽 NAND Gate에서는:
-
-```text
-Q = NOT(1 AND 1)
-
 Q = 0
 ```
 
 이 된다.
+
+Q가 0이고 S도 0이면:
+
+```text
+QB = NOT(0 OR 0)
+
+QB = 1
+```
+
+이다.
 
 따라서:
 
@@ -247,8 +234,6 @@ QB = 1
 
 이 된다.
 
-즉 **Reset 상태**이다.
-
 ---
 
 # 10. Invalid 상태
@@ -256,101 +241,109 @@ QB = 1
 입력:
 
 ```text
-S_B = 0
-R_B = 0
+S = 1
+R = 1
 ```
 
-이면 두 NAND Gate 모두 하나의 입력으로 0을 받게 된다.
+이면 두 NOR Gate 모두 입력에 1을 받는다.
 
-따라서:
+NOR Gate는 하나의 입력이라도 1이면 출력이 0이므로:
 
 ```text
-Q  = 1
-QB = 1
+Q  = 0
+QB = 0
 ```
 
 이 된다.
 
-그러나 정상적인 SR Latch에서는:
+그러나 정상 상태에서는:
 
 ```text
 QB = NOT(Q)
 ```
 
-이어야 하므로 Q와 QB가 동시에 1인 상태는 정상적인 저장 상태가 아니다.
+여야 한다.
 
 따라서:
 
 ```text
-S_B = 0
-R_B = 0
+Q = QB = 0
 ```
 
-은 **Invalid State 또는 Forbidden State**이다.
+은 정상적인 Latch 상태가 아니다.
+
+즉:
+
+```text
+S = 1
+R = 1
+```
+
+은 **Invalid State**이다.
 
 ---
 
 # 11. Invalid 상태 해제 문제
 
-다음 상태에서:
+다음 상태:
 
 ```text
-S_B = 0
-R_B = 0
+S = 1
+R = 1
 ```
 
-두 입력을 동시에:
+에서:
 
 ```text
-S_B = 1
-R_B = 1
+S = 0
+R = 0
 ```
 
-로 변경하면 두 NAND Gate가 거의 동시에 상태를 결정하려고 한다.
+으로 동시에 변경하면 두 NOR Gate가 동시에 상태를 결정하려고 한다.
 
-실제 CMOS 회로에서는:
+실제 CMOS 회로에서는 다음 요소의 차이가 존재한다.
 
 ```text
-Gate Delay
-Transistor Mismatch
+Transistor Delay
+Threshold Voltage
 Parasitic Capacitance
 Routing Delay
+Device Mismatch
 ```
 
-등에 의해 최종적으로 Q와 QB 중 어느 쪽이 1이 될지 예측하기 어려울 수 있다.
+따라서 최종 Q 값이 예측하기 어려워질 수 있다.
 
-따라서 Invalid 상태는 반드시 피해야 한다.
+이 때문에 Invalid 입력은 사용하지 않는 것이 원칙이다.
 
 ---
 
-# 12. Active-Low 입력의 의미
+# 12. NAND SR Latch와의 핵심 차이
 
-NAND SR Latch에서 가장 중요한 특징은:
-
-```text
-입력 0이 동작을 발생시킨다.
-```
-
-는 것이다.
-
-즉:
+NAND SR Latch:
 
 ```text
-S_B = 0 → Set Active
+Active-Low
 
-R_B = 0 → Reset Active
+S_B = 0 → Set
+R_B = 0 → Reset
+
+S_B = R_B = 1 → Hold
+
+S_B = R_B = 0 → Invalid
 ```
 
-이다.
-
-반대로:
+NOR SR Latch:
 
 ```text
-S_B = 1
-R_B = 1
-```
+Active-High
 
-이면 두 입력이 비활성 상태이며 이전 값을 유지한다.
+S = 1 → Set
+R = 1 → Reset
+
+S = R = 0 → Hold
+
+S = R = 1 → Invalid
+```
 
 ---
 
@@ -359,18 +352,9 @@ R_B = 1
 ## Input
 
 ```text
-S_B
-R_B
+S
+R
 ```
-
-또는 schematic symbol에서:
-
-```text
-SN
-RN
-```
-
-과 같이 표현할 수도 있다.
 
 ## Output
 
@@ -389,53 +373,76 @@ VSS
 권장 Symbol:
 
 ```text
-           ┌────────────────┐
-S_B ──────>│                │──────> Q
-R_B ──────>│ NAND_SR_LATCH  │
-           │                │──────> QB
-           └────────────────┘
+          ┌───────────────┐
+S ───────>│               │──────> Q
+R ───────>│ NOR_SR_LATCH  │
+          │               │──────> QB
+          └───────────────┘
 ```
 
 ---
 
-# 14. CMOS NAND2 구조
+# 14. CMOS NOR2 구조
 
-2-input CMOS NAND Gate는:
+Static CMOS 2-input NOR Gate는:
 
 ```text
-PMOS → Parallel
+PMOS → Series
 
-NMOS → Series
+NMOS → Parallel
 ```
 
-구조를 갖는다.
+구조를 사용한다.
 
 ```text
-                   VDD
-                    │
-             ┌──────┴──────┐
-             │             │
-           PMOS A        PMOS B
-             │             │
-             └──────┬──────┘
-                    │
-                   OUT
-                    │
-                  NMOS A
-                    │
-                  NMOS B
-                    │
-                   VSS
+                    VDD
+                     │
+                  PMOS A
+                     │
+                  PMOS B
+                     │
+                    OUT
+                     │
+              ┌──────┴──────┐
+              │             │
+            NMOS A        NMOS B
+              │             │
+              └──────┬──────┘
+                     │
+                    VSS
 ```
 
 ---
 
-# 15. NAND SR Latch의 Transistor 수
+# 15. NAND와 NOR의 CMOS 구조 차이
 
-일반적인 Static CMOS NAND2는:
+## NAND
+
+```text
+PMOS = Parallel
+
+NMOS = Series
+```
+
+## NOR
+
+```text
+PMOS = Series
+
+NMOS = Parallel
+```
+
+이 차이는 Full-Custom Layout과 Delay 특성에도 영향을 준다.
+
+---
+
+# 16. NOR SR Latch의 Transistor 수
+
+Static CMOS NOR2 하나는:
 
 ```text
 PMOS = 2
+
 NMOS = 2
 ```
 
@@ -447,93 +454,95 @@ NMOS = 2
 
 를 사용한다.
 
-NAND SR Latch는 NAND2 두 개를 사용하므로:
+NOR SR Latch는 NOR2 두 개이므로:
 
 ```text
-2 × NAND2
-```
-
-따라서 총 Transistor 수는:
-
-```text
-8 Transistors
+4 × 2 = 8 Transistors
 ```
 
 이다.
 
 ---
 
-# 16. 권장 Cell Hierarchy
+# 17. 권장 Cell Hierarchy
 
 ```text
 PMOS / NMOS
      ↓
-   NAND2
+    NOR2
      ↓
-NAND_SR_LATCH
+ NOR_SR_LATCH
 ```
 
-NAND2를 먼저 Schematic 및 Layout까지 완성한 후 상위 SR Latch에서 두 개를 재사용하는 것이 좋다.
+하위 NOR2 Cell에서 먼저:
+
+```text
+Schematic
+Simulation
+Layout
+DRC
+LVS
+```
+
+를 완료한 후 SR Latch를 구성하는 것이 좋다.
 
 ---
 
-# 17. Cadence Virtuoso Schematic 설계 순서
+# 18. Cadence Virtuoso Schematic 설계 순서
 
 ```text
-1. NAND2 Cell 생성
+1. NOR2 Cell 생성
 
 2. PMOS × 2 배치
 3. NMOS × 2 배치
 
-4. PMOS Parallel 연결
-5. NMOS Series 연결
+4. PMOS Series 연결
+5. NMOS Parallel 연결
 
 6. VDD / VSS 연결
 
-7. NAND2 Simulation
+7. NOR2 Functional Simulation
 
-8. NAND2 Symbol 생성
+8. NOR2 Symbol 생성
 
-9. NAND_SR_LATCH Cell 생성
+9. NOR_SR_LATCH Cell 생성
 
-10. NAND2 Symbol × 2 배치
+10. NOR2 Symbol × 2 배치
 
-11. 첫 번째 NAND Output을 Q로 설정
+11. Q Output과 QB Output 지정
 
-12. 두 번째 NAND Output을 QB로 설정
+12. Q → 반대쪽 NOR 입력으로 Feedback
 
-13. Q → 두 번째 NAND 입력으로 Feedback
+13. QB → 반대쪽 NOR 입력으로 Feedback
 
-14. QB → 첫 번째 NAND 입력으로 Feedback
+14. S Input Pin 생성
 
-15. S_B Input Pin 생성
+15. R Input Pin 생성
 
-16. R_B Input Pin 생성
+16. Q / QB Output Pin 생성
 
-17. Q / QB Output Pin 생성
+17. VDD / VSS 연결
 
-18. VDD / VSS 연결
+18. Check and Save
 
-19. Check and Save
+19. Symbol 생성
 
-20. Symbol 생성
+20. Testbench 생성
 
-21. Testbench 구성
-
-22. Transient Simulation
+21. Transient Simulation
 ```
 
 ---
 
-# 18. Simulation 검증
+# 19. Simulation 검증
 
-Transient Simulation에서 다음 상태를 순서대로 확인한다.
+Transient Simulation에서 다음 순서로 확인할 수 있다.
 
 ## Initial Reset
 
 ```text
-S_B = 1
-R_B = 0
+S = 0
+R = 1
 ```
 
 예상:
@@ -548,23 +557,19 @@ QB = 1
 ## Hold
 
 ```text
-S_B = 1
-R_B = 1
+S = 0
+R = 0
 ```
 
-예상:
-
-```text
-Q = previous value
-```
+이전 상태 유지
 
 ---
 
 ## Set
 
 ```text
-S_B = 0
-R_B = 1
+S = 1
+R = 0
 ```
 
 예상:
@@ -579,19 +584,19 @@ QB = 0
 ## Hold
 
 ```text
-S_B = 1
-R_B = 1
+S = 0
+R = 0
 ```
 
-이전 Set 상태를 유지해야 한다.
+Set 상태 유지
 
 ---
 
 ## Reset
 
 ```text
-S_B = 1
-R_B = 0
+S = 0
+R = 1
 ```
 
 예상:
@@ -603,181 +608,318 @@ QB = 1
 
 ---
 
-# 19. 초기 상태 문제
+# 20. 초기 상태 문제
 
-Cross-Coupled 구조는 Feedback을 이용하기 때문에 Simulation 시작 시 초기 상태가 명확하지 않을 수 있다.
+Cross-Coupled Feedback 구조이기 때문에 Simulation 시작 시 초기 상태가 불명확할 수 있다.
 
-따라서 처음 몇 ns 동안 Set 또는 Reset 입력을 강제로 인가하는 것이 좋다.
+따라서 초기 구간에서 Reset을 인가하는 것이 좋다.
 
 예:
 
 ```text
 0 ns ~ 10 ns
 
-S_B = 1
-R_B = 0
+S = 0
+R = 1
 ```
 
-으로 설정하면:
+결과:
 
 ```text
 Q  = 0
 QB = 1
 ```
 
-상태로 초기화할 수 있다.
+로 초기화된다.
 
 ---
 
-# 20. Propagation Delay
+# 21. Propagation Delay
 
-NAND SR Latch에서는 다음 Delay를 측정할 수 있다.
+주요 Delay는 다음과 같다.
 
 ## Set Delay
 
 ```text
-S_B : 1 → 0
-       ↓
-Q   : 0 → 1
+S : 0 → 1
+      ↓
+Q : 0 → 1
 ```
 
 ## Reset Delay
 
 ```text
-R_B : 1 → 0
-       ↓
-Q   : 1 → 0
+R : 0 → 1
+      ↓
+Q : 1 → 0
 ```
 
-일반적으로 입력과 출력의:
+일반적으로:
 
 ```text
-50% VDD Crossing Point
+Input 50% VDD Crossing
+
+→
+
+Output 50% VDD Crossing
 ```
 
-를 기준으로 Propagation Delay를 측정한다.
+사이의 시간을 측정한다.
 
 ---
 
-# 21. Layout 구조
+# 22. NOR Gate의 Delay 특성
+
+NOR Gate에서는 Pull-Up Network에 PMOS가 Series로 연결된다.
+
+```text
+VDD
+ │
+PMOS
+ │
+PMOS
+ │
+OUT
+```
+
+PMOS는 NMOS에 비해 동일 크기에서 일반적으로 Drive Strength가 낮기 때문에 NOR Gate의 LOW → HIGH 전환은 상대적으로 느려질 수 있다.
+
+따라서 Full-Custom 설계에서는 PMOS Width를 조절하여 Rise / Fall Delay를 맞추는 방법을 사용할 수 있다.
+
+---
+
+# 23. Layout 구조
 
 권장 Floorplan:
 
 ```text
-VDD ─────────────────────────────
+VDD ────────────────────────────────
 
-     ┌──────────┐
-S_B →│ NAND_Q   │────────────→ Q
-     └──────────┘
-           ▲
-           │ QB Feedback
-           │
-           ▼
-     ┌──────────┐
-R_B →│ NAND_QB  │────────────→ QB
-     └──────────┘
-           ▲
-           │ Q Feedback
-           │
+       ┌──────────┐
+S ────>│ NOR_QB   │─────────────> QB
+       └──────────┘
+             ▲
+             │ Q Feedback
+             │
+             ▼
+       ┌──────────┐
+R ────>│ NOR_Q    │─────────────> Q
+       └──────────┘
+             ▲
+             │ QB Feedback
+             │
 
-VSS ─────────────────────────────
+VSS ────────────────────────────────
 ```
 
 ---
 
-# 22. Layout 핵심 포인트
+# 24. Layout 주요 고려사항
 
-Cross-Coupled Feedback 경로:
+Feedback 경로:
 
 ```text
-Q  → NAND_QB
+Q  → NOR_QB
 
-QB → NAND_Q
+QB → NOR_Q
 ```
 
-를 최대한 짧게 배치한다.
+를 가능한 한 짧게 유지한다.
 
-Feedback Node의 Parasitic Capacitance가 커지면 출력 전환 속도가 느려질 수 있다.
+특히 NOR2는 PMOS가 Series 구조이므로 PMOS Active / Diffusion 구조가 NAND와 다르다.
 
-두 NAND의 Layout 구조를 가능한 한 유사하게 설계하면 지나친 Delay 불균형을 줄일 수 있다.
+Layout에서는:
+
+```text
+PMOS Series Connection
+
+NMOS Parallel Connection
+```
+
+을 정확하게 구현해야 한다.
 
 ---
 
-# 23. DRC / LVS
+# 25. DRC / LVS
 
 ## DRC
 
-다음 항목을 확인한다.
+확인 항목:
 
 ```text
-Active Width / Spacing
-Poly Width / Spacing
-Metal Width / Spacing
+Active Width
+Active Spacing
+Poly Width
+Poly Spacing
+Metal Width
+Metal Spacing
 Contact Enclosure
 Via Enclosure
-N-Well
-Implant
+N-Well Rule
+Implant Rule
 ```
 
 ---
 
 ## LVS
 
-다음 연결을 집중적으로 확인한다.
+논리 연결을 확인한다.
 
 ```text
-S_B + QB → NAND → Q
+S + Q  → NOR → QB
 
-R_B + Q → NAND → QB
+R + QB → NOR → Q
 ```
 
-주요 오류:
+주요 오류 후보:
 
 ```text
-Q / QB 연결 반대
+Q / QB Port Mapping 오류
 
-Feedback 누락
+Feedback 방향 오류
 
-S_B / R_B Pin 오류
+S / R Input 반전
 
 VDD / VSS 누락
 ```
 
 ---
 
-# 24. NAND SR Latch 특징
+# 26. Post-Layout Simulation
 
-## 장점
+PEX 이후 Extracted View를 사용하여 Transient Simulation을 다시 수행한다.
 
-- NAND2 두 개만으로 구현 가능
-- 구조가 간단함
-- 1-bit 저장 가능
-- Active-Low Control 회로에 적합
-- D Latch / DFF 설계의 기본 구조
+비교 항목:
 
-## 단점
+```text
+Set Delay
 
-- Active-Low 입력이므로 논리 해석에 주의 필요
-- Invalid State 존재
-- 초기 상태가 불명확할 수 있음
-- Set과 Reset을 동시에 활성화하면 안 됨
+Reset Delay
+
+Rise Time
+
+Fall Time
+
+Power Consumption
+
+Q / QB Feedback Stability
+```
+
+Schematic Simulation보다 Layout Simulation에서 Parasitic R/C 영향으로 Delay가 증가할 수 있다.
 
 ---
 
-# 25. 결론
+# 27. NAND형과 NOR형 비교
 
-NAND 기반 SR Latch는 두 개의 NAND Gate를 Cross-Coupled 형태로 연결하여 1-bit 정보를 저장하는 가장 기본적인 순차 논리 회로 중 하나이다.
+| 항목 | NAND SR Latch | NOR SR Latch |
+|---|---|---|
+| 기본 Gate | NAND2 × 2 | NOR2 × 2 |
+| Set 입력 | Active-Low | Active-High |
+| Reset 입력 | Active-Low | Active-High |
+| Hold | S_B=1, R_B=1 | S=0, R=0 |
+| Set | S_B=0, R_B=1 | S=1, R=0 |
+| Reset | S_B=1, R_B=0 | S=0, R=1 |
+| Invalid | S_B=0, R_B=0 | S=1, R=1 |
+| Invalid Output | Q=1, QB=1 | Q=0, QB=0 |
+| Transistor 수 | 8 | 8 |
+| 입력 특성 | Active-Low | Active-High |
 
-NAND SR Latch의 가장 중요한 특징은 Set과 Reset이 Active-Low라는 점이다.
+---
+
+# 28. 기억하기 쉬운 방법
+
+## NAND SR Latch
 
 ```text
-S_B = 0 → Set
+0이 Active
 
-R_B = 0 → Reset
+00 → Invalid
 
-S_B = R_B = 1 → Hold
-
-S_B = R_B = 0 → Invalid
+11 → Hold
 ```
 
-Full-Custom 설계에서는 Cross-Coupled Feedback Routing, NAND Gate의 Delay, 초기 상태 설정, Invalid State 방지 및 DRC/LVS 검증이 주요 설계 요소이다.
+즉:
+
+```text
+NAND = Active-Low
+```
+
+---
+
+## NOR SR Latch
+
+```text
+1이 Active
+
+11 → Invalid
+
+00 → Hold
+```
+
+즉:
+
+```text
+NOR = Active-High
+```
+
+---
+
+# 29. 장점
+
+- 매우 단순한 1-bit Storage 구조
+- NOR Gate 2개만 필요
+- Active-High Set / Reset으로 직관적인 제어 가능
+- Latch 및 Flip-Flop 동작 이해에 적합
+- Full-Custom Sequential Circuit 설계의 기본 구조
+
+---
+
+# 30. 단점
+
+- S와 R을 동시에 1로 만들 수 없음
+- Invalid State 존재
+- 초기 상태가 불명확할 수 있음
+- Setup / Reset 입력 전환 순서에 주의 필요
+- Cross-Coupled Feedback 때문에 Simulation 초기화가 필요할 수 있음
+
+---
+
+# 31. 향후 확장
+
+NOR SR Latch의 원리는 다음 회로를 이해하는 기초가 된다.
+
+```text
+SR Latch
+   ↓
+Gated SR Latch
+   ↓
+Gated D Latch
+   ↓
+D Flip-Flop
+   ↓
+Register
+   ↓
+Counter / MAC / Sequential Logic
+```
+
+---
+
+# 32. 결론
+
+NOR 기반 SR Latch는 두 개의 NOR Gate를 Cross-Coupled 형태로 연결하여 1-bit 정보를 저장하는 기본적인 Sequential Circuit이다.
+
+NOR SR Latch는 Active-High 방식으로 동작한다.
+
+```text
+S = 1, R = 0 → Set
+
+S = 0, R = 1 → Reset
+
+S = 0, R = 0 → Hold
+
+S = 1, R = 1 → Invalid
+```
+
+NAND 기반 SR Latch와 기본적인 저장 원리는 동일하지만 입력의 Active Level과 Invalid State의 출력이 반대이다.
+
+Full-Custom 설계에서는 NOR Gate의 Series PMOS 구조, Cross-Coupled Feedback Routing, Initial State 설정, Propagation Delay 및 DRC/LVS 검증이 주요 설계 요소이다.
